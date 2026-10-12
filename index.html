@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>goon tracker</title>
+<style>
+:root{--bg:#07070a;--fg:#f4f4f6;--mut:#7a7a88;--card:rgba(255,255,255,.04);--line:rgba(255,255,255,.09);--a:#8b5cf6;--b:#22d3ee;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;background:radial-gradient(600px 400px at 85% -5%,rgba(139,92,246,.25),transparent),radial-gradient(500px 400px at -10% 100%,rgba(34,211,238,.16),transparent),var(--bg)}
+main{max-width:520px;margin:0 auto;padding:56px 20px}
+h1{font-size:34px;font-weight:700;letter-spacing:-.03em;margin:0 0 28px;background:linear-gradient(90deg,var(--fg),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.s{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 14px;backdrop-filter:blur(8px)}
+.s b{display:block;font-size:32px;font-weight:700;letter-spacing:-.03em;background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+.s span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+button{font:inherit;cursor:pointer;transition:transform .15s,box-shadow .2s,border-color .2s}
+.log{width:100%;padding:18px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;font-size:16px;font-weight:600;margin-bottom:28px;box-shadow:0 8px 32px rgba(139,92,246,.35)}
+.log:hover{box-shadow:0 8px 40px rgba(34,211,238,.45);transform:translateY(-2px)}
+.log:active{transform:scale(.98)}
+.row{display:flex;align-items:center;padding:14px 16px;margin-bottom:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;font-size:15px}
+.row span{flex:1}
+.x{border:0;background:none;color:var(--mut);font-size:20px}
+.x:hover{color:#f87171}
+.shared{margin-bottom:18px;text-align:center;padding:22px}
+.shared b{font-size:52px}
+.shared em{display:block;margin-top:6px;font-style:normal;font-size:13px;color:var(--mut)}
+.big{display:block;width:100%;padding:52px 16px;margin-bottom:14px;border:1px solid var(--line);border-radius:22px;background:var(--card);color:var(--fg);font-size:28px;font-weight:700;letter-spacing:-.02em;backdrop-filter:blur(8px)}
+.big:hover{border-color:var(--b);box-shadow:0 0 36px rgba(34,211,238,.25);transform:translateY(-3px)}
+.back{border:0;background:none;color:var(--mut);padding:0;margin-bottom:18px;font-size:14px}
+.back:hover{color:var(--fg)}
+.pop{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.row{animation:slide .35s ease-out}
+@keyframes slide{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
+#home,#app{animation:fade .4s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.p{position:fixed;width:8px;height:8px;border-radius:50%;pointer-events:none;z-index:99}
+.rp{position:fixed;border-radius:50%;pointer-events:none;z-index:98;border:2px solid var(--b)}
+.orb{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;pointer-events:none;z-index:97;background:radial-gradient(circle,rgba(34,211,238,.35),rgba(139,92,246,.18) 60%,transparent 70%);transition:width .2s,height .2s,margin .2s,opacity .3s;opacity:0}
+.orb.big{width:64px;height:64px;margin:-32px 0 0 -32px}
+[hidden]{display:none!important}
+.empty{color:var(--mut);text-align:center;padding:28px 0;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <div id="home">
+    <h1>who's up</h1>
+    <div class="s shared"><b id="all">0</b><span>combined total</span><em id="split"></em></div>
+    <button class="big" data-p="George">George</button>
+    <button class="big" data-p="Adam">Adam</button>
+  </div>
+  <div id="app" hidden>
+  <button class="back" id="back">← back</button>
+  <h1 id="title">tracker</h1>
+  <div class="stats">
+    <div class="s"><b id="since">–</b><span>days since last</span></div>
+    <div class="s"><b id="month">0</b><span>this month</span></div>
+    <div class="s"><b id="total">0</b><span>total</span></div>
+  </div>
+  <button class="log" id="log">+ log goon</button>
+  <div id="list"></div>
+  </div>
+</main>
+<script>
+const calm=false;
+if(true){
+  const orb=document.createElement('div');orb.className='orb';document.body.append(orb);
+  let mx=0,my=0,ox=0,oy=0,last=0,hue=0;
+  addEventListener('pointermove',e=>{
+    mx=e.clientX;my=e.clientY;orb.style.opacity=1;
+    orb.classList.toggle('big',!!e.target.closest('button'));
+    const n=performance.now();if(n-last<28)return;last=n;
+    const t=document.createElement('div');t.className='p';hue=(hue+12)%360;
+    t.style.cssText='left:'+(mx-3)+'px;top:'+(my-3)+'px;width:6px;height:6px;background:hsl('+(190+Math.sin(hue/57)*60)+',90%,65%);z-index:96';
+    document.body.append(t);
+    t.animate([{transform:'scale(1)',opacity:.8},{transform:'translateY(14px) scale(0)',opacity:0}],{duration:600,easing:'ease-out'}).onfinish=()=>t.remove();
+  });
+  document.addEventListener('mouseleave',()=>{orb.style.opacity=0});
+  (function loop(){ox+=(mx-ox)*.18;oy+=(my-oy)*.18;orb.style.transform='translate('+ox+'px,'+oy+'px)';requestAnimationFrame(loop)})();
+}
+function burst(x,y){
+  if(calm)return;
+  const c=['#8b5cf6','#22d3ee','#f472b6','#fde047','#fff'];
+  for(let i=0;i<22;i++){
+    const p=document.createElement('div');p.className='p';
+    p.style.cssText='left:'+x+'px;top:'+y+'px;background:'+c[i%5];
+    document.body.append(p);
+    const a=Math.random()*6.283,d=60+Math.random()*110;
+    p.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:'translate('+Math.cos(a)*d+'px,'+(Math.sin(a)*d+40)+'px) scale(0)',opacity:0}],{duration:650+Math.random()*350,easing:'cubic-bezier(.2,.8,.4,1)'}).onfinish=()=>p.remove();
+  }
+}
+function ripple(x,y){
+  if(calm)return;
+  const r=document.createElement('div');r.className='rp';
+  r.style.cssText='left:'+x+'px;top:'+y+'px;width:20px;height:20px;margin:-10px 0 0 -10px';
+  document.body.append(r);
+  r.animate([{transform:'scale(1)',opacity:.9},{transform:'scale(14)',opacity:0}],{duration:600,easing:'ease-out'}).onfinish=()=>r.remove();
+}
+function bump(id,v){
+  const e=document.getElementById(id);
+  if(e.textContent!=String(v)){e.textContent=v;e.classList.remove('pop');void e.offsetWidth;e.classList.add('pop')}
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.id==='log')burst(e.clientX,e.clientY);else ripple(e.clientX,e.clientY);
+});
+let logs=[],P='',db=null,unsub=null;
+const N={George:0,Adam:0};let homed=false;
+function tally(){bump('all',N.George+N.Adam);document.getElementById('split').textContent='George '+N.George+' \u00b7 Adam '+N.Adam}
+function home(){
+  if(homed)return;homed=true;
+  Object.keys(N).forEach(p=>{
+    if(db)db.collection('logs-'+p).onSnapshot(sn=>{N[p]=sn.size;tally()},()=>{});
+    else{try{N[p]=JSON.parse(localStorage.getItem('logs:'+p)||'[]').length}catch(e){}}
+  });
+  tally();
+}
+home();
+const col=()=>db.collection('logs-'+P);
+const save=()=>{try{localStorage.setItem('logs:'+P,JSON.stringify(logs.map(l=>l.t)))}catch(e){}};
+const fmt=t=>new Date(t).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+function render(){
+  const now=new Date(),ts=logs.map(l=>l.t),last=ts.length?Math.max(...ts):null;
+  document.getElementById('since').textContent=last?Math.floor((now-last)/864e5):'\u2013';
+  bump('month',ts.filter(t=>{const d=new Date(t);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()}).length);
+  bump('total',ts.length);
+  const l=document.getElementById('list');
+  l.innerHTML=logs.length?'':'<div class="empty">nothing logged yet</div>';
+  [...logs].sort((a,b)=>b.t-a.t).forEach(g=>{
+    const r=document.createElement('div');r.className='row';
+    const s=document.createElement('span');s.textContent=fmt(g.t);
+    const x=document.createElement('button');x.className='x';x.textContent='\u00d7';
+    x.onclick=()=>{
+      if(db&&g.id)col().doc(g.id).delete().catch(()=>{});
+      else{logs=logs.filter(v=>v!==g);save();render()}
+    };
+    r.append(s,x);l.append(r);
+  });
+}
+document.getElementById('log').onclick=()=>{
+  if(db)col().add({t:Date.now()}).catch(()=>{});
+  else{logs.push({t:Date.now()});save();render()}
+};
+document.querySelectorAll('.big').forEach(b=>b.onclick=async()=>{
+  P=b.dataset.p;logs=[];
+  document.getElementById('title').textContent=P;
+  document.getElementById('home').hidden=true;
+  document.getElementById('app').hidden=false;
+  if(unsub){unsub();unsub=null}
+  if(db){
+    unsub=col().orderBy('t','desc').onSnapshot(snap=>{
+      logs=snap.docs.map(d=>({id:d.id,t:d.data().t}));render();
+    },()=>{});
+  }else{
+    try{logs=JSON.parse(localStorage.getItem('logs:'+P)||'[]').map(t=>({t}))}catch(e){}
+    render();
+  }
+});
+document.getElementById('back').onclick=()=>{
+  if(unsub){unsub();unsub=null}
+  document.getElementById('app').hidden=true;
+  document.getElementById('home').hidden=false;
+};
+</script>
+</body>
+</html>
